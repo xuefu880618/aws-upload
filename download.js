@@ -7,7 +7,7 @@ let awsConfig = {
     "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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"
 };
 const BUKETNAME ='upload-api1'
-
+var lambda = new AWS.Lambda({apiVersion: '2015-03-31'});
 AWS.config.update(awsConfig);
 let docClient = new AWS.DynamoDB.DocumentClient();
 let inputstring = '';
@@ -48,19 +48,27 @@ let downloadFromS3 = function (){
             console.log("Loaded " + data1.ContentLength + " bytes");
             console.log(data1.Body.toString());
             // do something with data.Body
-            fs.writeFileSync('C:/Users/user/Desktop/Fovus_intern/output.txt', data1.Body + inputstring);
+            fs.writeFileSync('./output.txt', data1.Body.toString() +":" +inputstring,function(err){
+                if (err) 
+                    return console.error(err); 
+                fs.readFile('./output.txt', 'utf-8', function (err, data) {
+                    if (err)
+                        return console.error(err);
+                    console.log(data);
+                });
+            });
           }
         }
       );
 }
 downloadFromS3();
-let file = fs.readFileSync('C:/Users/user/Desktop/Fovus_intern/output.txt', (err) => { 
-    if (err) { 
-      console.log(err); 
-    } 
-  });
+
 let uploadToS3 = function (){
-    
+    let file = fs.readFileSync('./output.txt', (err) => { 
+        if (err) { 
+          console.log(err); 
+        } 
+      });
     
     s3.putObject({
         Key:'output.txt',
