@@ -1,6 +1,5 @@
 var AWS = require('aws-sdk');
 const fs = require("fs");
-const crypto = require("crypto");
 let awsConfig = {
     "region": "us-east-1",
     "endpoint": "http://dynamodb.us-east-1.amazonaws.com",
@@ -63,51 +62,4 @@ let downloadFromS3 = function (){
 }
 downloadFromS3();
 
-let uploadToS3 = function (){
-    let file = fs.readFileSync('./output.txt', (err) => { 
-        if (err) { 
-          console.log(err); 
-        } 
-      });
-    
-    s3.putObject({
-        Key:'output.txt',
-        Bucket:BUKETNAME,
-        ContentType:'text/plain',
-        Body:file,
-        //ACL:'public-read',
-    }).promise();
-}
-uploadToS3();
-//let docClient = new AWS.DynamoDB.DocumentClient();
-awsConfig = {
-    "region": "us-east-1",
-    "endpoint": "http://dynamodb.us-east-1.amazonaws.com",
-    "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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"
-};
-AWS.config.update(awsConfig);
-//console.log(file.toString());
 
-let insert1 = function () {
-    var params = {
-        TableName: "testdata",
-        
-            "Item": {
-                "ID": crypto.randomUUID().toString(),
-                "Filepath":BUKETNAME + "output.txt",
-                
-              }
-            
-        
-    };
-    docClient.put(params, function (err, data) {
-        if (err) {
-            console.log("users::fetchOneByKey::error - " + JSON.stringify(err, null, 2));
-        }
-        else {
-            //inputstring = data["Item"]['Input String'];
-            console.log(JSON.stringify(data, null, 2));
-        }
-    })
-}
-insert1();
