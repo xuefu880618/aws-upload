@@ -17,7 +17,7 @@ let insert1 = function () {
         TableName: "testdata",
         
             "Item": {
-                "ID": str(1),
+                "ID": "1",
                 "Filepath":BUKETNAME + "output.txt",
                 
               }
