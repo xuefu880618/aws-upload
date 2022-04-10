@@ -17,7 +17,7 @@ let insert1 = function () {
         TableName: "testdata",
         
             "Item": {
-                "ID": crypto.randomUUID().toString(),
+                "ID": str(1),
                 "Filepath":BUKETNAME + "output.txt",
                 
               }
