@@ -1,6 +1,6 @@
 var AWS = require('aws-sdk');
 const crypto = require("crypto");
-const BUKETNAME ='upload-api1'
+const BUKETNAME ='upload-api1/'
 
 let awsConfig = {
     "region": "us-east-1",
