@@ -14,7 +14,7 @@ let fetchOneByKey = function () {
     var params = {
         TableName: "testdata",
         Key: {
-            "ID": "960ac12e-16dc-46ac-8fa7-ce37470bf288"
+            "ID": "0"
         }
     };
     docClient.get(params, function (err, data) {
