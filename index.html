@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios@0.2.1/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <div id="app">  
+      <div >
+        <label>Text input :</label>
+        <input type="text" v-model="inputtext"><br>
+        <label>File input :</label>
+        <input type="file" @change="onFileChange" v-model="filename">
+      </div>
+      <div >
+        <button v-if="!uploadURL" @click="uploadImage(),uploadFile()">Submit</button>
+      </div>
+      <h2 v-if="uploadURL">Success! file uploaded to bucket.</h2>
+    </div>
+  
+    <script>
+      const MAX_IMAGE_SIZE = 1000000
+
+
+      const API_ENDPOINT = 'https://l96wt7qh6e.execute-api.us-east-1.amazonaws.com/default/uploadfileapi' // e.g. https://ab1234ab123.execute-api.us-east-1.amazonaws.com/uploads
+      const bucketname = "upload-api1/"
+      new Vue({
+        el: "#app",
+        data: {
+          image: '',
+          uploadURL: '',
+          inputtext:'',
+          filename:'',
+        },
+        methods: {
+          onFileChange (e) {
+            let files = e.target.files || e.dataTransfer.files
+            if (!files.length) return
+            this.createImage(files[0])
+            var file = files[0];  
+            this.filename = file.name;
+          },
+          createImage (file) {
+            // var image = new Image()
+            let reader = new FileReader()
+            reader.onload = (e) => {
+              console.log('length: ', e.target.result.includes('data:text/plain'))
+              if (!e.target.result.includes('data:text/plain')) {
+                return alert('Wrong file type - txt only.')
+              }
+              if (e.target.result.length > MAX_IMAGE_SIZE) {
+                return alert('Image is loo large.')
+              }
+              this.image = e.target.result
+            }
+            reader.readAsDataURL(file)
+          },
+          removeImage: function (e) {
+            console.log('Remove clicked')
+            this.image = ''
+          },
+          uploadImage: async function (e) {
+            console.log('Upload clicked')
+            // Get the presigned URL
+            const response = await axios({
+              method: 'GET',
+              url: API_ENDPOINT
+            })
+            console.log('Response: ', response)
+            console.log('Uploading: ', this.image)
+            let binary = atob(this.image.split(',')[1])
+            let array = []
+            for (var i = 0; i < binary.length; i++) {
+              array.push(binary.charCodeAt(i))
+            }
+            let blobData = new Blob([new Uint8Array(array)], {type: 'text/plain'})
+            console.log('Uploading to: ', response.uploadURL)
+            const result = await fetch(response.uploadURL, {
+              method: 'PUT',
+              body: blobData
+            })
+            console.log('Result: ', result)
+            // Final URL for the user doesn't need the query string params
+            this.uploadURL = response.uploadURL.split('?')[0]
+          },
+
+          uploadFile: function (inputtext){
+            // instantiate a headers object
+            var myHeaders = new Headers();
+            // add content type header to object
+            myHeaders.append("Content-Type", "application/json");
+            // using built in JSON utility package turn object to string and store in a variable
+            var raw = JSON.stringify({"inputtext":this.inputtext,"filepath":bucketname + this.filename});
+            // create a JSON object with parameters for API call and store in a variable
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+            // make API call with parameters and use promises to get response
+            fetch("https://2u4npaclqk.execute-api.us-east-1.amazonaws.com/v2"
+            , requestOptions)
+            .then(response => response.text())
+            .then(result => alert(JSON.parse(result).body))
+            .catch(error => console.log('error', error));
+          }
+        }
+      })
+    </script>
+  </body>
+</html>

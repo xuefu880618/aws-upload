@@ -1,0 +1,909 @@
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+            - "*"
+          AllowedMethods:
+            - GET
+            - PUT
+            - POST
+            - DELETE
+            - HEAD
+          AllowedOrigins:
+            - "*"
+  DynamoDBTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName:
+        Ref: testdata
+      AttributeDefinitions:
+        - AttributeName:ID
+          AttributeType: S
+        - AttributeName:Filepath
+          AttributeType: S
+        - AttributeName:Input String
+          AttributeType: S
+      KeySchema:
+        - AttributeName: ID
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+    DependsOn: IAMRole
+    
+  IAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: AWSApplicationAutoscalingDynamoDBTablePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:DescribeTable'
+                  - 'dynamodb:UpdateTable'
+                  - 'cloudwatch:PutMetricAlarm'
+                  - 'cloudwatch:DescribeAlarms'
+                  - 'cloudwatch:DeleteAlarms'
+
+                Resource: '*'
+
+
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: lambda-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::579709734577:policy/service-role/AWSLambdaBasicExecutionRole-5b5011ef-54f2-40aa-9592-3c8e7ce03b7f
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+      Path: /
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: lambda-function-${EnvName}
+      Description: LambdaFunctioni of nodejs14.x.
+      Runtime: nodejs14.x
+      Code:
+        ZipFile:
+          "const AWS = require('aws-sdk')
+AWS.config.update({ region: process.env.AWS_REGION })
+const s3 = new AWS.S3()
+const uploadBucket = "upload-api1"
+
+// Change this value to adjust the signed URL's expiration
+const URL_EXPIRATION_SECONDS = 300
+
+// Main Lambda entry point
+exports.handler = async (event) => {
+  return await getUploadURL(event)
+}
+
+const getUploadURL = async function(event) {
+  const randomID = parseInt(Math.random() * 10000000)
+  const Key = `input.txt`
+
+  // Get signed URL from S3
+  const s3Params = {
+    Bucket: uploadBucket,
+    Key,
+    Expires: URL_EXPIRATION_SECONDS,
+    ContentType: 'text/plain',
+
+    // This ACL makes the uploaded object publicly readable. You must also uncomment
+    // the extra permission for the Lambda function in the SAM template.
+
+    // ACL: 'public-read'
+  }
+
+  console.log('Params: ', s3Params)
+  const uploadURL = await s3.getSignedUrlPromise('putObject', s3Params)
+
+  return JSON.stringify({
+    uploadURL: uploadURL,
+    Key
+  })
+}"
+      Handler: uploadfileapi/index.lambda_handler
+      MemorySize: 128
+      Timeout: 10
+      Role:
+        Fn::GetAtt:
+          - uploadfileapi-role-l9d5l2i0
+          - arn:aws:iam::579709734577:role/service-role/uploadfileapi-role-l9d5l2i0
+
+
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: lambda-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::579709734577:policy/service-role/AWSLambdaBasicExecutionRole-5b5011ef-54f2-40aa-9592-3c8e7ce03b7f
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+      Path: /
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: lambda-function-${EnvName}
+      Description: LambdaFunctioni of nodejs14.x.
+      Runtime: nodejs14.x
+      Code:
+        ZipFile:
+          "
+import time
+import json
+import boto3
+
+
+def lambda_handler(event, context):
+
+    # boto3 client
+    client = boto3.client("ec2")
+    ssm = boto3.client("ssm")
+
+    # getting instance information
+    describeInstance = client.describe_instances()
+
+    InstanceId = []
+    # fetchin instance id of the running instances
+    for i in describeInstance["Reservations"]:
+        for instance in i["Instances"]:
+            if instance["State"]["Name"] == "running":
+                InstanceId.append(instance["InstanceId"])
+
+    # looping through instance ids
+    
+        # command to be executed on instance
+    response = ssm.send_command(
+        InstanceIds=['i-07a3dfe3d0cd4a07e'],
+        DocumentName="AWS-RunShellScript",
+        Parameters={
+            #"commands": ["cd req3","sudo yum install -y nodejs"]
+            "commands": ["cd req3","cd aws-upload","node download.js","node upload.js","node insert.js"]
+        },  # replace command_to_be_executed with command
+    )
+
+    # fetching command id for the output
+    command_id = response["Command"]["CommandId"]
+
+    time.sleep(3)
+
+    # fetching command output
+    output1 = ssm.get_command_invocation(CommandId=command_id, InstanceId='i-07a3dfe3d0cd4a07e')
+    print(output1)
+    
+
+
+    return {"statusCode": 200, "body": json.dumps("good"),"result1":output1}"
+      Handler: trigger_run/lambda_function.lambda_handler
+      MemorySize: 128
+      Timeout: 10
+      Role:
+        Fn::GetAtt:
+          - lambda_ssm_ec2
+          - arn:aws:iam::579709734577:role/lambda_ssm_ec2
+
+
+
+
+
+
+
+
+  apiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: Example API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: !Ref apiGatewayName
+
+  apiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: !Ref apiGatewayHTTPMethod
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt lambdaFunction.Arn
+      ResourceId: !GetAtt apiGateway.RootResourceId
+      RestApiId: !Ref apiGateway
+
+  apiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - apiGatewayRootMethod
+    Properties:
+      RestApiId: !Ref apiGateway
+      StageName: !Ref apiGatewayStageName
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: lambda-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::579709734577:policy/DynamoDBPolicy
+        - arn:aws:iam::579709734577:policy/service-role/AWSLambdaBasicExecutionRole-e2894c1e-c667-4c67-b27f-1de360b2fc4f
+      Path: /
+  lambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+         import json
+# import the AWS SDK (for Python the package name is boto3)
+import boto3
+# import two packages to help us with dates and date formatting
+from time import gmtime, strftime
+import uuid
+
+# create a DynamoDB object using the AWS SDK
+dynamodb = boto3.resource('dynamodb')
+# use the DynamoDB object to select our table
+table = dynamodb.Table('testdata')
+# store the current time in a human readable format in a variable
+now = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+
+# define the handler function that the Lambda service will use as an entry point
+def lambda_handler(event, context):
+# extract values from the event object we got from the Lambda service and store in a variable
+    name = event['inputtext']
+    filename = event['filepath']
+# write name and time to the DynamoDB table using the object we instantiated and save response in a variable
+    response = table.put_item(
+        Item={
+            'ID': str(uuid.uuid4()),
+            'Input String': name,
+            'Filepath': filename
+
+            })
+# return a properly formatted JSON object
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda, ' + name + filename)
+    }
+      Description:  Dynamol DBambda function
+      FunctionName: !Ref lambdaFunctionName
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt lambdaIAMRole.Arn
+      Runtime: python3.8
+
+  lambdaApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt lambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      # note: if route *not* at API Gateway root, `SourceArn` would take the form of:
+      #               arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/PATH_PART
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/
+
+
+  lambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/DynamoDBfunction-role-ziwqwmws
+      RetentionInDays: 90
+
+
+
+
+
+
+  apiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: Example API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: !Ref apiGatewayName
+
+  apiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: !Ref apiGatewayHTTPMethod
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt lambdaFunction.Arn
+      ResourceId: !GetAtt apiGateway.RootResourceId
+      RestApiId: !Ref apiGateway
+
+  apiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - apiGatewayRootMethod
+    Properties:
+      RestApiId: !Ref apiGateway
+      StageName: !Ref apiGatewayStageName
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: lambda-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::579709734577:policy/DynamoDBPolicy
+        - arn:aws:iam::579709734577:policy/service-role/AWSLambdaBasicExecutionRole-e2894c1e-c667-4c67-b27f-1de360b2fc4f
+      Path: /
+  lambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+import time
+import json
+import boto3
+
+
+def lambda_handler(event, context):
+
+    # boto3 client
+    client = boto3.client("ec2")
+    ssm = boto3.client("ssm")
+
+    # getting instance information
+    describeInstance = client.describe_instances()
+
+    InstanceId = []
+    # fetchin instance id of the running instances
+    for i in describeInstance["Reservations"]:
+        for instance in i["Instances"]:
+            if instance["State"]["Name"] == "running":
+                InstanceId.append(instance["InstanceId"])
+
+    # looping through instance ids
+    
+        # command to be executed on instance
+    response = ssm.send_command(
+        InstanceIds=['i-07a3dfe3d0cd4a07e'],
+        DocumentName="AWS-RunShellScript",
+        Parameters={
+            #"commands": ["cd req3","sudo yum install -y nodejs"]
+            "commands": ["cd req3","cd aws-upload","node download.js","node upload.js","node insert.js"]
+        },  # replace command_to_be_executed with command
+    )
+
+    # fetching command id for the output
+    command_id = response["Command"]["CommandId"]
+
+    time.sleep(3)
+
+    # fetching command output
+    output1 = ssm.get_command_invocation(CommandId=command_id, InstanceId='i-07a3dfe3d0cd4a07e')
+    print(output1)
+    
+
+
+    return {"statusCode": 200, "body": json.dumps("good"),"result1":output1}
+
+      Description:  Dynamol DBambda function
+      FunctionName: !Ref lambdaFunctionName
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt lambdaIAMRole.Arn
+      Runtime: python3.8
+
+  lambdaApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt lambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      # note: if route *not* at API Gateway root, `SourceArn` would take the form of:
+      #               arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/PATH_PART
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/${apiGatewayStageName}/${apiGatewayHTTPMethod}/
+
+
+  lambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/DynamoDBfunction-role-ziwqwmws
+      RetentionInDays: 90
+
+VPC:
+      Type: "AWS::EC2::VPC"
+      Properties:
+        EnableDnsSupport: "true"
+        EnableDnsHostnames: "true"
+        CidrBlock:
+          Fn::FindInMap:
+            - "SubnetConfig"
+            - "VPC"
+            - "CIDR"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Ref 'VPCName'
+
+    PublicSubnet0:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        AvailabilityZone:
+          Fn::Sub:
+            - "${AWS::Region}${AZ}"
+            - AZ: !Select [ 0, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+        CidrBlock:
+          Fn::FindInMap:
+            - "SubnetConfig"
+            - "Public0"
+            - "CIDR"
+        MapPublicIpOnLaunch: "true"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-public-'
+                - !Select [ 0, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+
+    PublicSubnet1:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        AvailabilityZone:
+          Fn::Sub:
+            - "${AWS::Region}${AZ}"
+            - AZ: !Select [ 1, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+        CidrBlock:
+          Fn::FindInMap:
+            - "SubnetConfig"
+            - "Public1"
+            - "CIDR"
+        MapPublicIpOnLaunch: "true"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-public-'
+                - !Select [ 1, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+
+    PrivateSubnet0:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        AvailabilityZone:
+          Fn::Sub:
+            - "${AWS::Region}${AZ}"
+            - AZ: !Select [ 0, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+        CidrBlock:
+          Fn::FindInMap:
+            - "SubnetConfig"
+            - "Private0"
+            - "CIDR"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Private"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-private-'
+                - !Select [ 0, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+
+    PrivateSubnet1:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        AvailabilityZone:
+          Fn::Sub:
+            - "${AWS::Region}${AZ}"
+            - AZ: !Select [ 1, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+        CidrBlock:
+          Fn::FindInMap:
+            - "SubnetConfig"
+            - "Private1"
+            - "CIDR"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Private"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-private-'
+                - !Select [ 1, !FindInMap [ "AZRegions", !Ref "AWS::Region", "AZs" ] ]
+
+    InternetGateway:
+      Type: "AWS::EC2::InternetGateway"
+      Properties:
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-IGW'
+
+
+    GatewayToInternet:
+      Type: "AWS::EC2::VPCGatewayAttachment"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        InternetGatewayId:
+          Ref: "InternetGateway"
+
+    PublicRouteTable:
+      Type: "AWS::EC2::RouteTable"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-public-route-table'
+
+
+    PublicRoute:
+      Type: "AWS::EC2::Route"
+      DependsOn: "GatewayToInternet"
+      Properties:
+        RouteTableId:
+          Ref: "PublicRouteTable"
+        DestinationCidrBlock: "0.0.0.0/0"
+        GatewayId:
+          Ref: "InternetGateway"
+
+    PublicSubnetRouteTableAssociation0:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PublicSubnet0"
+        RouteTableId:
+          Ref: "PublicRouteTable"
+
+    PublicSubnetRouteTableAssociation1:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PublicSubnet1"
+        RouteTableId:
+          Ref: "PublicRouteTable"
+
+    PublicNetworkAcl:
+      Type: "AWS::EC2::NetworkAcl"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        Tags:
+          -
+            Key: "Application"
+            Value:
+              Ref: "AWS::StackName"
+          -
+            Key: "Network"
+            Value: "Public"
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-public-nacl'
+
+
+
+    InboundHTTPPublicNetworkAclEntry:
+      Type: "AWS::EC2::NetworkAclEntry"
+      Properties:
+        NetworkAclId:
+          Ref: "PublicNetworkAcl"
+        RuleNumber: "100"
+        Protocol: "-1"
+        RuleAction: "allow"
+        Egress: "false"
+        CidrBlock: "0.0.0.0/0"
+        PortRange:
+          From: "0"
+          To: "65535"
+
+    OutboundPublicNetworkAclEntry:
+      Type: "AWS::EC2::NetworkAclEntry"
+      Properties:
+        NetworkAclId:
+          Ref: "PublicNetworkAcl"
+        RuleNumber: "100"
+        Protocol: "-1"
+        RuleAction: "allow"
+        Egress: "true"
+        CidrBlock: "0.0.0.0/0"
+        PortRange:
+          From: "0"
+          To: "65535"
+
+    PublicSubnetNetworkAclAssociation0:
+      Type: "AWS::EC2::SubnetNetworkAclAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PublicSubnet0"
+        NetworkAclId:
+          Ref: "PublicNetworkAcl"
+
+    PublicSubnetNetworkAclAssociation1:
+      Type: "AWS::EC2::SubnetNetworkAclAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PublicSubnet1"
+        NetworkAclId:
+          Ref: "PublicNetworkAcl"
+
+    ElasticIP0:
+      Type: "AWS::EC2::EIP"
+      Properties:
+        Domain: "vpc"
+
+    ElasticIP1:
+      Type: "AWS::EC2::EIP"
+      Properties:
+        Domain: "vpc"
+
+    NATGateway0:
+      Type: "AWS::EC2::NatGateway"
+      Properties:
+        AllocationId:
+          Fn::GetAtt:
+            - "ElasticIP0"
+            - "AllocationId"
+        SubnetId:
+          Ref: "PublicSubnet0"
+
+    NATGateway1:
+      Type: "AWS::EC2::NatGateway"
+      Properties:
+        AllocationId:
+          Fn::GetAtt:
+            - "ElasticIP1"
+            - "AllocationId"
+        SubnetId:
+          Ref: "PublicSubnet1"
+
+    PrivateRouteTable0:
+      Type: "AWS::EC2::RouteTable"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        Tags:
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-private-route-table-0'
+
+    PrivateRouteTable1:
+      Type: "AWS::EC2::RouteTable"
+      Properties:
+        VpcId:
+          Ref: "VPC"
+        Tags:
+          -
+            Key: "Name"
+            Value: !Join
+              - ''
+              - - !Ref "VPCName"
+                - '-private-route-table-1'
+
+    PrivateRouteToInternet0:
+      Type: "AWS::EC2::Route"
+      Properties:
+        RouteTableId:
+          Ref: "PrivateRouteTable0"
+        DestinationCidrBlock: "0.0.0.0/0"
+        NatGatewayId:
+          Ref: "NATGateway0"
+
+    PrivateRouteToInternet1:
+      Type: "AWS::EC2::Route"
+      Properties:
+        RouteTableId:
+          Ref: "PrivateRouteTable1"
+        DestinationCidrBlock: "0.0.0.0/0"
+        NatGatewayId:
+          Ref: "NATGateway1"
+
+    PrivateSubnetRouteTableAssociation0:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PrivateSubnet0"
+        RouteTableId:
+          Ref: "PrivateRouteTable0"
+
+    PrivateSubnetRouteTableAssociation1:
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties:
+        SubnetId:
+          Ref: "PrivateSubnet1"
+        RouteTableId:
+          Ref: "PrivateRouteTable1"
+
+  Outputs:
+
+    VPCId:
+      Description: "VPCId of VPC"
+      Value:
+        Ref: "VPC"
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-VPC"
+
+    PublicSubnet0:
+      Description: "SubnetId of public subnet 0"
+      Value:
+        Ref: "PublicSubnet0"
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-PublicSubnet0"
+
+    PublicSubnet1:
+      Description: "SubnetId of public subnet 1"
+      Value:
+        Ref: "PublicSubnet1"
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-PublicSubnet1"
+
+    PrivateSubnet0:
+      Description: "SubnetId of private subnet 0"
+      Value:
+        Ref: "PrivateSubnet0"
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-PrivateSubnet0"
+
+    PrivateSubnet1:
+      Description: "SubnetId of private subnet 1"
+      Value:
+        Ref: "PrivateSubnet1"
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-PrivateSubnet1"
+
+    DefaultSecurityGroup:
+      Description: "DefaultSecurityGroup Id"
+      Value: !GetAtt VPC.DefaultSecurityGroup
+      Export:
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-DefaultSecurityGroup"
+
+
+
+
+
+Outputs:
+  S3UploaderFunction:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt S3UploaderFunction.Arn
+  S3UploaderFunctionIamRole:
+    Description: "Implicit IAM Role created for function"
+    Value: !GetAtt S3UploaderFunctionRole.Arn
+  S3BucketName:
+    Description: S3 bucket
+    Value: !Ref S3Bucket
+
+  apiGatewayInvokeURL:
+    Value: !Sub https://${apiGateway}.execute-api.${AWS::Region}.amazonaws.com/${apiGatewayStageName}
+
+  lambdaArn:
+    Value: !GetAtt lambdaFunction.Arn
