@@ -1,6 +1,6 @@
 var AWS = require('aws-sdk');
 const crypto = require("crypto");
-const BUKETNAME ='upload-api1/'
+const BUKETNAME ='interview-test1/'
 
 let awsConfig = {
     "region": "us-east-1",
@@ -14,7 +14,7 @@ let docClient = new AWS.DynamoDB.DocumentClient();
 
 let insert1 = function () {
     var params = {
-        TableName: "testdata",
+        TableName: "Dynamo_api-lambda-db1",
         
             "Item": {
                 "ID": "1",

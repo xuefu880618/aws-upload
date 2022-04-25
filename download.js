@@ -5,14 +5,14 @@ let awsConfig = {
     "endpoint": "http://dynamodb.us-east-1.amazonaws.com",
     "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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"
 };
-const BUKETNAME ='upload-api1'
+const BUKETNAME ='interview-test1'
 var lambda = new AWS.Lambda({apiVersion: '2015-03-31'});
 AWS.config.update(awsConfig);
 let docClient = new AWS.DynamoDB.DocumentClient();
 let inputstring = '';
 let fetchOneByKey = function () {
     var params = {
-        TableName: "testdata",
+        TableName: "Dynamo_api-lambda-db1",
         Key: {
             "ID": "0"
         }

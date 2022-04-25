@@ -6,7 +6,7 @@ awsConfig = {
 };
 AWS.config.update(awsConfig);
 var s3 = new AWS.S3();
-const BUKETNAME ='upload-api1'
+const BUKETNAME ='interview-test1'
 let uploadToS3 = function (){
     let file = fs.readFileSync('./output.txt', (err) => { 
         if (err) { 
