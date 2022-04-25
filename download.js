@@ -12,7 +12,7 @@ let docClient = new AWS.DynamoDB.DocumentClient();
 let inputstring = '';
 let fetchOneByKey = function () {
     var params = {
-        TableName: "Dynamo_api-lambda-db1",
+        TableName: "dynamo-table-interview",
         Key: {
             "ID": "0"
         }
