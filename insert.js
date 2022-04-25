@@ -1,6 +1,6 @@
 var AWS = require('aws-sdk');
 const crypto = require("crypto");
-const BUKETNAME ='interview-test1/'
+const BUKETNAME ='interview-test-1/'
 
 let awsConfig = {
     "region": "us-east-1",
