@@ -5,7 +5,7 @@ let awsConfig = {
     "endpoint": "http://dynamodb.us-east-1.amazonaws.com",
     "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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"
 };
-const BUKETNAME ='interview-test1'
+const BUKETNAME ='interview-test-1'
 var lambda = new AWS.Lambda({apiVersion: '2015-03-31'});
 AWS.config.update(awsConfig);
 let docClient = new AWS.DynamoDB.DocumentClient();
@@ -38,7 +38,7 @@ AWS.config.update(awsConfig);
 var s3 = new AWS.S3();
 let downloadFromS3 = function (){
     s3.getObject(
-        { Bucket: "upload-api1", Key: "input.txt" },
+        { Bucket: "interview-test-1", Key: "input.txt" },
         function (error, data1) {
           if (error != null) {
             console.log("Failed to retrieve an object: " + error);

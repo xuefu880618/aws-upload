@@ -1,0 +1,85 @@
+Resources:
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    
+    Properties:
+      Timeout: 90
+      Code:
+        ZipFile: |
+        
+                  import time
+                  import json
+                  import boto3
+                  def lambda_handler(event, context):
+
+                      # boto3 client
+                      client = boto3.client("ec2")
+                      ssm = boto3.client("ssm")
+
+                      # getting instance information
+                      describeInstance = client.describe_instances()
+
+                      InstanceId = []
+                      # fetchin instance id of the running instances
+                      for i in describeInstance["Reservations"]:
+                          for instance in i["Instances"]:
+                              if instance["State"]["Name"] == "running":
+                                  InstanceId.append(instance["InstanceId"])
+
+                      # looping through instance ids
+                      
+                          # command to be executed on instance
+                      response = ssm.send_command(
+                          InstanceIds=['i-009c6586b63ae0e63'],
+                          DocumentName="AWS-RunShellScript",
+                          Parameters={
+                              #"commands": ["mkdir req3","cd req3"]
+                              #"commands": ["cd req3","rm -r -v aws-upload"]
+                              #"commands": ["sudo yum update -y","sudo yum install git -y","git version"]
+                              #"commands": ["git version"]
+                              #"commands": ["cd req3","git clone https://github.com/xuefugod/aws-upload.git"]
+                            
+                              #"commands": ["sudo yum -y install curl","curl -sL https://rpm.nodesource.com/setup_14.x | sudo bash -","sudo yum install -y nodejs"]
+                              #"commands": ["sudo yum install -y nodejs"]
+                              "commands": ["cd req3","cd aws-upload","node download.js","node insert.js","node upload.js"]
+                              #"commands": ["ls"]
+                          },  # replace command_to_be_executed with command
+                      )
+
+                      # fetching command id for the output
+                      command_id = response["Command"]["CommandId"]
+
+                      time.sleep(3)
+
+                      # fetching command output
+                      output1 = ssm.get_command_invocation(CommandId=command_id, InstanceId='i-009c6586b63ae0e63')
+                      print(output1)
+                      
+
+
+                      return {"statusCode": 200, "body": json.dumps("good"),"result1":output1}
+
+      FunctionName: tirgger-run-interview
+      
+      Handler: index.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt IAMRole.Arn
+
+  IAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns: 
+          - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+          - arn:aws:iam::aws:policy/AWSLambdaExecute
+          - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
