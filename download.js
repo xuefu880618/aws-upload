@@ -3,7 +3,7 @@ const fs = require("fs");
 let awsConfig = {
     "region": "us-east-1",
     "endpoint": "http://dynamodb.us-east-1.amazonaws.com",
-    "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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"
+    "accessKeyId": "", "secretAccessKey": ""
 };
 const BUKETNAME ='interview-test-1'
 var lambda = new AWS.Lambda({apiVersion: '2015-03-31'});
