@@ -38,7 +38,7 @@ def lambda_handler(event, context):
     time.sleep(3)
 
     # fetching command output
-    output1 = ssm.get_command_invocation(CommandId=command_id, InstanceId='i-07a3dfe3d0cd4a07e')
+    output1 = ssm.get_command_invocation(CommandId=command_id, InstanceId='')
     print(output1)
     
 
