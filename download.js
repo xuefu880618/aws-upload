@@ -32,7 +32,7 @@ let fetchOneByKey = function () {
 fetchOneByKey();
 var AWS = require('aws-sdk');
 awsConfig = {
-    "accessKeyId": "AKIAYN6LER2YXTCGB5PH", "secretAccessKey": "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","endpoint": null,
+    "accessKeyId": "", "secretAccessKey": "","endpoint": null,
 };
 AWS.config.update(awsConfig);
 var s3 = new AWS.S3();
